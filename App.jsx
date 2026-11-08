@@ -1,533 +1,465 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { 
+  Shield, Users, MessageSquare, Settings, FileText, Calendar, 
+  CheckCircle2, Send, Sparkles, LogOut, Heart, Star, Lock, 
+  Unlock, Bell, ChevronRight, AlertCircle, RefreshCw, Layers,
+  Image as ImageIcon, Bookmark, Radio, Compass, UserCheck
+} from 'lucide-react';
 
-export default function App() {
-  // --- 상태 관리 (State) ---
-  const [currentUser, setCurrentUser] = useState({
-    name: '황세연',
-    email: 's3.y30n09@gmail.com',
-    role: 'super_admin', // 'super_admin', 'admin', 'user', 'guest'
-    profileImg: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
-  });
-
-  const [currentTab, setCurrentTab] = useState('home'); // 'home', 'pledge', 'archive', 'inquiry', 'settings', 'admin_dashboard'
-  const [adminSubTab, setAdminSubTab] = useState('applications'); // 관리자 대시보드 내부 탭
-  const [isLocked, setIsLocked] = useState(false);
-  const [language, setLanguage] = useState('KR'); // 'KR', 'EN', 'JP', 'CN', 'ES'
-  const [selectedCrewTab, setSelectedCrewTab] = useState('월수토'); // 홈 화면 요일별 탭
-
-  // 강제 확인 팝업 알림 상태
-  const [activePopupNotice, setActivePopupNotice] = useState(null);
-
-  // 데이터 상태들
-  const [officialLinks, setOfficialLinks] = useState([
-    { id: 1, type: '공식', name: '라인업 공식 인스타', url: 'https://instagram.com', account: '' },
-    { id: 2, type: '공식', name: '라인업 공식 유튜브', url: 'https://youtube.com', account: '' },
-    { id: 3, type: '계좌', name: '라인업컴퍼니 공식 계좌', url: '', account: '부산은행 101-2096-7592-09' }
-  ]);
-
-  const [bulletins, setBulletins] = useState([
-    { id: 1, title: '팬 아카이브 이용 수칙 안내', content: '본 아카이브는 단방향 팬 소통 공간입니다. 규칙을 준수해 주세요.', popup: true, media: [] }
-  ]);
-
-  const [adminList, setAdminList] = useState([
-    { id: 1, name: '리모', role: 'super_admin', email: 'tlqkfrorkxek09@gmail.com', img: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' },
-    { id: 2, name: '깨깨미', role: 'admin', email: 'jhwon1209@gmail.com', img: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100' },
-    { id: 3, name: 'iamkiki032', role: 'admin', email: 'iamkiki032@gmail.com', img: '' },
-    { id: 4, name: '5수', role: 'admin', email: 'dori.osu.save@gmail.com', img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' }
-  ]);
-
-  const [usersList, setUsersList] = useState([
-    { id: 1, name: '황세연', email: 's3.y30n09@gmail.com', warningNote: '' },
-    { id: 2, name: '테스트유저', email: 'test@gmail.com', warningNote: '' }
-  ]);
-
-  // 경고 사유 모달 및 총괄 위임 모달 상태
-  const [warningModalUser, setWarningModalUser] = useState(null);
-  const [warningReason, setWarningReason] = useState('');
+export default function LineupHub() {
+  const [authLevel, setAuthLevel] = useState(0); // 0: 비회원, 1: 일반, 2: 인증회원, 3: 매니저, 4: 총괄관리자
+  const [pinInput, setPinInput] = useState('');
+  const [activeTab, setActiveTab] = useState('dashboard');
   
-  const [superTransferModal, setSuperTransferModal] = useState(null); // 위임 대상 관리자
-  const [transferStep, setTransferStep] = useState(1); // 1: 확인, 2: 비번
-  const [transferPassword, setTransferPassword] = useState('');
-
-  // 관리자 단톡방 메시지
-  const [chatMessages, setChatMessages] = useState([
-    { sender: '리모', text: '이거 보이는지 확인해주세용', time: '01:53' },
-    { sender: '정희원', text: '보여요!', time: '01:53' }
+  // 공지사항 및 아카이브 상태 (카테고리별 분류 포함)
+  const [notices, setNotices] = useState([
+    { id: 1, title: '라인업 허브(Lineup Hub) v1.0 정식 런칭 및 운영 가이드', date: '2026-11-09', author: '총괄관리자', category: '공지', content: '팬 아키이빙, 4단계 권한 체계, 11모듈 관리 제어 및 실시간 매니저 익명 소통함이 정식 활성화되었습니다. 안전한 팬덤 문화를 위해 가이드라인을 준수해 주세요.' },
+    { id: 2, title: '주간 방송 스케줄 및 타임라인 아카이브 안내', date: '2026-11-08', author: '매니저', category: '일정', content: '이번 주 주요 방송 일정 및 서포트 진행 상황, 아카이브 자료 업로드 현황을 확인하실 수 있습니다.' },
+    { id: 3, title: '팬덤 전용 디지털 굿즈 및 배너 리소스 공유', date: '2026-11-05', author: '총괄관리자', category: '아카이브', content: '커뮤니티 및 소셜 홍보용 공식 배너와 커스텀 스티커 디자인 리소스 파일 모음입니다.' }
   ]);
-  const [inputChat, setInputChat] = useState('');
 
-  // 앱 실행 시 첫 팝업 체크
-  useEffect(() => {
-    const popupTarget = bulletins.find(b => b.popup);
-    if (popupTarget) {
-      setActivePopupNotice(popupTarget);
+  // 팬 아트 및 미디어 갤러리 상태
+  const [gallery, setGallery] = useState([
+    { id: 1, title: '공식 런칭 기념 축하 배너 아트', author: '서포터즈A', likes: 128, tag: 'FanArt' },
+    { id: 2, title: '스페셜 방송 모멘트 포토 카드 에디트', author: '금손팬B', likes: 256, tag: 'Edit' }
+  ]);
+
+  // 익명 소통함 상태 (답변 기능 포함)
+  const [messages, setMessages] = useState([
+    { id: 1, sender: '익명팬A', text: '오늘 방송 스케줄 변동이나 특이사항 혹시 있나요?', time: '14:20', replies: [{ id: 101, sender: '매니저', text: '정상 방송 진행 예정이며, 변동 시 공지탭을 통해 안내해 드리겠습니다!', time: '14:25' }] }
+  ]);
+  const [newMsg, setNewMsg] = useState('');
+  const [replyInput, setReplyInput] = useState({});
+
+  // 11모듈 관리 제어 상세 상태
+  const [modules, setModules] = useState([
+    { id: 1, name: '권한 제어 모듈', status: 'Active', target: 'Level 1~4', desc: 'PIN 번호 기반 4단계 접근 권한 실시간 세분화 제어 및 세션 보호' },
+    { id: 2, name: '공지 승인 모듈', status: 'Active', target: 'Manager+', desc: '아카이브 공지 및 스케줄 등록 전용 사전 검토 및 퍼블리싱 제어' },
+    { id: 3, name: '트래픽 모니터링', status: 'Active', target: 'System', desc: '무중단 Vercel 서버 접속량 추적, 대시보드 로딩 속도 및 에러 로깅' },
+    { id: 4, name: '익명 피드백 필터', status: 'Active', target: 'Community', desc: '클린 팬덤 문화 유지를 위한 실시간 비속어 및 키워드 필터링 시스템' },
+    { id: 5, name: '콘텐츠 백업', status: 'Active', target: 'Storage', desc: '팬 아카이빙 자료 및 소통 로그 유실 방지 자동 스냅샷 아카이빙' },
+    { id: 6, name: '스케줄 동기화', status: 'Active', target: 'Calendar', desc: '주요 외부 플랫폼 일정 및 실시간 알림 타임라인 자동 동기화' },
+    { id: 7, name: '보안 로그', status: 'Active', target: 'Security', desc: '관리자 접속 시도, 권한 변경 이력 및 IP 접근 감사 로그 기록' },
+    { id: 8, name: '링크 관리', status: 'Active', target: 'External', desc: '공식 팬카페, 소셜 채널 및 외부 아카이브 링크 모음집 실시간 제어' },
+    { id: 9, name: '알림 시스템', status: 'Active', target: 'Broadcast', desc: '중요 공지 발생 시 상단 배너 및 실시간 푸시 알림 연동 기능' },
+    { id: 10, name: '커스텀 세팅', status: 'Active', target: 'Theme', desc: '다크모드 테마 컬러, UI 컴포넌트 및 대시보드 레이아웃 맞춤 설정' },
+    { id: 11, name: '시스템 통계', status: 'Active', target: 'Analytics', desc: '방문자 활성도, 소통 채널 참여율 및 종합 데이터 분석 리포트' }
+  ]);
+
+  // PIN 번호 로그인 처리
+  const handlePinLogin = (e) => {
+    e.preventDefault();
+    if (pinInput === '7777') {
+      setAuthLevel(4);
+      alert('👑 총괄관리자 권한으로 로그인되었습니다. (11모듈 전체 제어 및 승인 권한 활성화)');
+    } else if (pinInput === '1234') {
+      setAuthLevel(3);
+      alert('🛡️ 매니저 권한으로 로그인되었습니다. (공지 등록 및 답변 권한 활성화)');
+    } else if (pinInput === '1111') {
+      setAuthLevel(2);
+      alert('⭐ 인증회원 권한으로 로그인되었습니다.');
+    } else {
+      alert('잘못된 PIN 번호입니다.\n\n[테스트 권한 번호]\n- 인증회원: 1111\n- 매니저: 1234\n- 총괄관리자: 7777');
     }
-  }, []);
-
-  // 총괄 관리자 여부
-  const isSuperAdmin = currentUser.role === 'super_admin';
-  const isAdmin = currentUser.role === 'admin' || isSuperAdmin;
-
-  // 관리자 익명화 처리 함수 (비관리자에게는 무조건 '관리자'로 통일)
-  const getDisplayAuthor = (authorRole, originalName) => {
-    if (isAdmin) return originalName; // 관리자 눈에는 실명/닉네임 노출
-    if (authorRole === 'admin' || authorRole === 'super_admin') return '관리자';
-    return originalName;
+    setPinInput('');
   };
 
-  // 총괄 관리자 위임 처리
-  const handleTransferSuperAdmin = (targetAdmin) => {
-    if (transferStep === 1) {
-      setTransferStep(2);
-    } else {
-      if (transferPassword === 'lineupupup0614!') {
-        setAdminList(adminList.map(a => {
-          if (a.email === targetAdmin.email) return { ...a, role: 'super_admin' };
-          if (a.email === currentUser.email) return { ...a, role: 'admin' };
-          return a;
-        }));
-        setCurrentUser({ ...currentUser, role: 'admin' });
-        alert('총괄 관리자 권한이 성공적으로 위임되었습니다.');
-        setSuperTransferModal(null);
-        setTransferStep(1);
-        setTransferPassword('');
-      } else {
-        alert('비밀번호가 일치하지 않습니다.');
-      }
+  const toggleModuleStatus = (id) => {
+    if (authLevel < 4) {
+      alert('모듈 설정을 변경하려면 [총괄관리자(7777)] 권한이 필요합니다.');
+      return;
     }
+    setModules(modules.map(m => m.id === id ? { ...m, status: m.status === 'Active' ? 'Paused' : 'Active' } : m));
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-20 select-none">
-      
-      {/* 강제 확인 팝업 알림 */}
-      {activePopupNotice && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-fade-in">
-            <h3 className="text-xl font-bold text-slate-900 mb-2">🚨 [중요 공지] {activePopupNotice.title}</h3>
-            <p className="text-slate-600 text-sm mb-6 whitespace-pre-wrap">{activePopupNotice.content}</p>
-            <button 
-              onClick={() => setActivePopupNotice(null)}
-              className="w-full bg-slate-900 text-white py-3 rounded-xl font-semibold hover:bg-slate-800 transition"
-            >
-              내용을 모두 확인했으며 동의합니다 (닫기)
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* --- 상단 네비게이션 바 (요청하신 블랙 'L' 로고 반영) --- */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-2.5">
-          {/* 업로드해주신 블랙 배경의 'L' 로고 디자인 적용 */}
-          <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-black text-xl shadow-md border border-slate-800">
-            L
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-600 selection:text-white">
+      {/* 상단 네비게이션 헤더 */}
+      <header className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-xl">
+        <div className="flex items-center space-x-3">
+          <div className="bg-gradient-to-tr from-purple-600 to-pink-600 p-2.5 rounded-2xl shadow-lg shadow-purple-500/20">
+            <Sparkles className="w-5 h-5 text-white animate-pulse" />
           </div>
           <div>
-            <h1 className="font-black text-lg tracking-tight">LINEUP HUB</h1>
-            <p className="text-[10px] text-slate-500">단방향 팬 아카이브</p>
+            <h1 className="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-purple-400 bg-clip-text text-transparent">
+              LINEUP HUB
+            </h1>
+            <p className="text-[11px] text-slate-400 font-medium">프리미엄 팬 아키이빙 & 매니지먼트 생태계</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          {/* 일반 사용자에게는 관리자 인원수 절대 비공개 */}
-          {isAdmin && (
-            <span className="bg-slate-100 text-slate-700 text-xs px-3 py-1.5 rounded-full font-medium border border-slate-200">
-              {isSuperAdmin ? '총괄 관리자' : '관리자'} ({adminList.length}명)
+        <div className="flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-2 bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-700/60 text-xs shadow-inner">
+            <span className="text-slate-400">보안 등급:</span>
+            <span className="font-bold text-purple-400">
+              {authLevel === 4 ? '👑 총괄관리자 (Lv.4)' : authLevel === 3 ? '🛡️ 매니저 (Lv.3)' : authLevel === 2 ? '⭐ 인증회원 (Lv.2)' : '👤 일반 방문자 (Lv.1)'}
             </span>
-          )}
+          </div>
 
-          {isAdmin && (
+          {authLevel > 0 ? (
             <button 
-              onClick={() => setCurrentTab('admin_dashboard')}
-              className={`p-2 rounded-xl transition ${currentTab === 'admin_dashboard' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-              title="관리자 대시보드"
+              onClick={() => setAuthLevel(0)}
+              className="flex items-center space-x-1.5 text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-3.5 py-2 rounded-xl hover:bg-red-500/20 transition-all font-semibold"
             >
-              🛡️
+              <LogOut className="w-3.5 h-3.5" />
+              <span>로그아웃</span>
             </button>
+          ) : (
+            <form onSubmit={handlePinLogin} className="flex items-center space-x-2">
+              <input 
+                type="password" 
+                placeholder="PIN 4자리 입력" 
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                maxLength={4}
+                className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs w-28 text-center text-white focus:outline-none focus:border-purple-500 shadow-inner"
+              />
+              <button type="submit" className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-purple-600/30">
+                인증
+              </button>
+            </form>
           )}
-
-          <button className="relative p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition">
-            🔔
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">1</span>
-          </button>
-
-          <button 
-            onClick={() => setCurrentTab('settings')}
-            className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition"
-          >
-            ⚙️
-          </button>
         </div>
       </header>
 
-      {/* --- 메인 콘텐츠 영역 --- */}
-      <main className="max-w-4xl mx-auto p-4">
-        
-        {/* 1. 홈 화면 */}
-        {currentTab === 'home' && (
-          <div className="space-y-6">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-              <h2 className="font-bold text-sm text-slate-500 mb-3 uppercase tracking-wider">📌 공식 링크 및 방송 바로가기</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {officialLinks.map((link) => (
-                  <a 
-                    key={link.id}
-                    href={link.url || '#'} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-100 text-left transition block"
-                  >
-                    <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded mr-1">{link.type}</span>
-                    <p className="font-semibold text-sm text-slate-800 mt-1 truncate">{link.name}</p>
-                    {link.account && <p className="text-xs text-slate-500 truncate mt-0.5">{link.account}</p>}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* 요일별 크루 탭 */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="flex space-x-2 border-b border-slate-100 pb-3 mb-4">
-                {['월수토', '화목일'].map((day) => (
-                  <button
-                    key={day}
-                    onClick={() => setSelectedCrewTab(day)}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-sm transition ${selectedCrewTab === day ? 'bg-slate-900 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                  >
-                    {day} 크루
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {['유원', 'CK', '락민', '현호'].map((member, idx) => (
-                  <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center hover:shadow-md transition cursor-pointer">
-                    <div className="w-16 h-16 bg-slate-300 rounded-full mx-auto mb-2 overflow-hidden">
-                      <img src={`https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100`} alt={member} className="w-full h-full object-cover"/>
-                    </div>
-                    <p className="font-bold text-slate-900">{member}</p>
-                    <p className="text-xs text-slate-500 mt-1">{selectedCrewTab} 아카이브</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-              <h2 className="font-bold text-slate-800 mb-3">📢 중요 게시판 및 공지</h2>
-              {bulletins.map(b => (
-                <div key={b.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <h3 className="font-bold text-slate-900">{b.title}</h3>
-                  <p className="text-sm text-slate-600 mt-1">{b.content}</p>
-                </div>
-              ))}
-            </div>
+      {/* 메인 레이아웃 구조 */}
+      <div className="flex flex-1">
+        {/* 사이드바 네비게이션 */}
+        <aside className="w-64 bg-slate-900/40 backdrop-blur border-r border-slate-800 p-4 hidden md:flex flex-col justify-between space-y-4">
+          <div className="space-y-1.5">
+            <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Navigation Menu</p>
+            <button 
+              onClick={() => setActiveTab('dashboard')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${activeTab === 'dashboard' ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30 shadow-lg shadow-purple-900/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+            >
+              <Shield className="w-4 h-4" />
+              <span>대시보드 홈</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('notices')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${activeTab === 'notices' ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30 shadow-lg shadow-purple-900/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>공지사항 & 아카이브</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('gallery')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${activeTab === 'gallery' ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30 shadow-lg shadow-purple-900/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span>팬아트 & 리소스 갤러리</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('community')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${activeTab === 'community' ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30 shadow-lg shadow-purple-900/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>매니저 익명 소통함</span>
+            </button>
+            {authLevel >= 3 && (
+              <button 
+                onClick={() => setActiveTab('admin')}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${activeTab === 'admin' ? 'bg-pink-600/20 text-pink-300 border border-pink-500/30 shadow-lg shadow-pink-900/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>11모듈 관리자 대시보드</span>
+              </button>
+            )}
           </div>
-        )}
 
-        {/* 2. 관리자 대시보드 */}
-        {currentTab === 'admin_dashboard' && isAdmin && (
-          <div className="space-y-6">
-            <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg">
-              <h2 className="text-xl font-black">🛡️ 관리자 대시보드</h2>
-              <p className="text-xs text-slate-300 mt-1">콘텐츠 검수, 사용자 제재, 공식 링크 및 총괄 권한 관리 센터</p>
+          <div className="bg-slate-900/80 border border-slate-800/80 p-4 rounded-2xl space-y-2">
+            <div className="flex items-center space-x-2 text-xs font-bold text-purple-400">
+              <Radio className="w-4 h-4 animate-pulse" />
+              <span>Vercel Live Hub</span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              서버리스 무중단 배포 및 자동 백업 시스템 가동 중
+            </p>
+          </div>
+        </aside>
 
-              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-800 text-xs font-semibold">
-                {[
-                  { id: 'applications', label: '신청관리' },
-                  { id: 'inquiries', label: '문의답변' },
-                  { id: 'pledges', label: '공약관리' },
-                  { id: 'member_links', label: '멤버링크' },
-                  { id: 'admin_chat', label: '관리자단톡' },
-                  { id: 'official_links', label: '공식링크' },
-                  { id: 'bulletin', label: '게시판' },
-                  { id: 'users', label: '사용자목록' },
-                  { id: 'delete_req', label: '삭제신청' },
-                  { id: 'reports', label: '신고접수' },
-                  { id: 'admin_approval', label: '관리자승인' }
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setAdminSubTab(tab.id)}
-                    className={`px-3 py-2 rounded-lg transition ${adminSubTab === tab.id ? 'bg-white text-slate-900 font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+        {/* 메인 뷰포트 본문 내용 */}
+        <main className="flex-1 p-6 lg:p-10 max-w-6xl mx-auto w-full">
+          {activeTab === 'dashboard' && (
+            <div className="space-y-8 animate-fadeIn">
+              <div className="bg-gradient-to-r from-purple-900/40 via-slate-900 to-slate-900 border border-purple-500/20 rounded-3xl p-8 relative overflow-hidden shadow-2xl">
+                <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="relative z-10 space-y-4">
+                  <div className="flex items-center space-x-2 flex-wrap gap-2">
+                    <span className="bg-purple-500/20 text-purple-300 text-xs px-3.5 py-1 rounded-full border border-purple-500/30 font-bold tracking-wide">
+                      SYSTEM ONLINE • VERCEL DEPLOYED
+                    </span>
+                    <span className="bg-emerald-500/20 text-emerald-300 text-xs px-3.5 py-1 rounded-full border border-emerald-500/30 font-bold">
+                      11 MODULES ACTIVE
+                    </span>
+                  </div>
+                  <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white">
+                    영구적이고 안전한 라인업 팬 아카이브
+                  </h2>
+                  <p className="text-slate-300 max-w-2xl text-sm leading-relaxed">
+                    구독료나 트래픽 제한 걱정 없이 Vercel 서버리스 환경에서 영구 구동되는 아카이브 허브입니다. 
+                    PIN 번호 기반의 강력한 4단계 권한 체계와 실시간 매니저 피드백 소통 시스템을 활용해 보세요.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-3 hover:border-purple-500/40 transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-lg text-white">4단계 보안 권한</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">일반 방문자부터 총괄관리자까지 PIN 인증을 통해 철저하게 분리된 접근 제어를 제공합니다.</p>
+                </div>
+                <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-3 hover:border-pink-500/40 transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-400">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-lg text-white">익명 소통 채널</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">팬들과 매니저가 부담 없이 의견을 나누고 실시간 피드백과 답변을 주고받는 안전한 공간입니다.</p>
+                </div>
+                <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-3 hover:border-indigo-500/40 transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                    <Settings className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-lg text-white">11모듈 통합 관리</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">권한, 로그, 트래픽, 백업 등 11가지 전문 제어 모듈을 관리자 대시보드에서 직접 통제합니다.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'notices' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex justify-between items-center flex-wrap gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">공지사항 및 아카이브</h2>
+                  <p className="text-xs text-slate-400 mt-1">공식 공지, 방송 일정 및 아카이브 자료실입니다.</p>
+                </div>
+                {authLevel >= 3 && (
+                  <button 
+                    onClick={() => {
+                      const title = prompt('공지 제목을 입력하세요:');
+                      const category = prompt('카테고리를 입력하세요 (예: 공지, 일정, 아카이브):') || '공지';
+                      const content = prompt('공지 내용을 입력하세요:');
+                      if (title && content) {
+                        setNotices([{ id: Date.now(), title, category, date: new Date().toISOString().slice(0,10), author: authLevel === 4 ? '총괄관리자' : '매니저', content }, ...notices]);
+                      }
+                    }}
+                    className="bg-purple-600 hover:bg-purple-500 text-white px-4.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-purple-600/30 flex items-center space-x-1.5"
                   >
-                    {tab.label}
+                    <span>+ 새 공지/아카이브 등록</span>
                   </button>
+                )}
+              </div>
+              <div className="space-y-4">
+                {notices.map((n) => (
+                  <div key={n.id} className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-3 hover:border-slate-700 transition-all">
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-purple-500/10 text-purple-300 px-3 py-1 rounded-full font-bold border border-purple-500/20">{n.category}</span>
+                        <span className="text-slate-400 font-semibold">{n.author}</span>
+                      </div>
+                      <span className="text-slate-500">{n.date}</span>
+                    </div>
+                    <h3 className="font-bold text-lg text-white">{n.title}</h3>
+                    <p className="text-sm text-slate-300 leading-relaxed">{n.content}</p>
+                  </div>
                 ))}
               </div>
             </div>
+          )}
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-              
-              {adminSubTab === 'official_links' && (
+          {activeTab === 'gallery' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
-                  <h3 className="font-bold text-lg mb-4">공식 링크 및 본방송 추가/관리</h3>
-                  <div className="space-y-3 mb-6">
-                    <input type="text" placeholder="링크 이름 (예: 본방 라이브 킥)" className="w-full p-3 border rounded-xl text-sm" />
-                    <input type="text" placeholder="https://..." className="w-full p-3 border rounded-xl text-sm" />
-                    <button onClick={() => alert('공식 링크가 추가되었습니다!')} className="w-full bg-slate-900 text-white py-3 rounded-xl font-semibold">공식 링크 추가</button>
-                  </div>
-                  <div className="space-y-2">
-                    {officialLinks.map(l => (
-                      <div key={l.id} className="p-3 bg-slate-50 border rounded-xl flex justify-between items-center">
-                        <div>
-                          <span className="text-xs bg-slate-200 px-2 py-0.5 rounded mr-2">{l.type}</span>
-                          <span className="font-semibold text-sm">{l.name}</span>
-                        </div>
-                        <button onClick={() => setOfficialLinks(officialLinks.filter(item => item.id !== l.id))} className="text-rose-500 text-xs font-bold">삭제</button>
-                      </div>
-                    ))}
-                  </div>
+                  <h2 className="text-2xl font-bold text-white">팬아트 & 리소스 갤러리</h2>
+                  <p className="text-xs text-slate-400 mt-1">서포터즈 및 팬들이 제작한 팬아트와 편집 리소스 공간입니다.</p>
                 </div>
-              )}
-
-              {adminSubTab === 'admin_chat' && (
-                <div>
-                  <h3 className="font-bold text-lg mb-2">관리자 전용 내부 단톡방</h3>
-                  <p className="text-xs text-slate-500 mb-4">관리자들끼리만 실시간 소통하는 공간입니다. 비상 시 아래 오픈채팅방을 이용하세요.</p>
-                  
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4 text-xs text-amber-900 flex justify-between items-center">
-                    <div>
-                      <p className="font-bold">🔗 비상용 외부 오픈채팅방 링크</p>
-                      <a href="https://open.kakao.com" target="_blank" rel="noreferrer" className="text-blue-600 underline mt-0.5 block">https://open.kakao.com/o/example (클릭 시 이동)</a>
-                      <p className="mt-1 font-semibold text-rose-600">참여 비밀번호: 0614</p>
+                {authLevel >= 2 && (
+                  <button 
+                    onClick={() => {
+                      const title = prompt('작품 제목을 입력하세요:');
+                      const author = prompt('작가(제작자)명을 입력하세요:');
+                      if (title && author) {
+                        setGallery([{ id: Date.now(), title, author, likes: 1, tag: 'FanArt' }, ...gallery]);
+                      }
+                    }}
+                    className="bg-purple-600 hover:bg-purple-500 text-white px-4.5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg"
+                  >
+                    + 팬아트 등록
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {gallery.map((g) => (
+                  <div key={g.id} className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-4 hover:border-purple-500/30 transition-all">
+                    <div className="h-40 bg-slate-950 rounded-2xl flex items-center justify-center border border-slate-800/80 text-slate-600">
+                      <ImageIcon className="w-10 h-10" />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="text-[10px] bg-pink-500/10 text-pink-400 px-2.5 py-0.5 rounded-md font-bold">{g.tag}</span>
+                        <h3 className="font-bold text-white text-base mt-1">{g.title}</h3>
+                        <p className="text-xs text-slate-400">제작자: {g.author}</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setGallery(gallery.map(item => item.id === g.id ? {...item, likes: item.likes + 1} : item));
+                        }}
+                        className="flex items-center space-x-1.5 bg-slate-800/80 hover:bg-slate-800 px-3 py-2 rounded-xl text-xs text-pink-400 border border-slate-700 transition-all font-bold"
+                      >
+                        <Heart className="w-4 h-4 fill-pink-500 text-pink-500" />
+                        <span>{g.likes}</span>
+                      </button>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  <div className="bg-slate-50 p-4 rounded-xl border h-64 overflow-y-auto space-y-3 mb-4">
-                    {chatMessages.map((msg, i) => (
-                      <div key={i} className={`flex flex-col ${msg.sender === currentUser.name ? 'items-end' : 'items-start'}`}>
-                        <span className="text-[10px] text-slate-500 mb-0.5">{getDisplayAuthor('admin', msg.sender)}</span>
-                        <div className={`p-3 rounded-2xl text-sm max-w-xs ${msg.sender === currentUser.name ? 'bg-slate-900 text-white' : 'bg-white border text-slate-800'}`}>
-                          {msg.text}
-                        </div>
+          {activeTab === 'community' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h2 className="text-2xl font-bold text-white">매니저 익명 소통함</h2>
+                <p className="text-xs text-slate-400 mt-1">자유롭게 의견과 문의를 남겨주세요. 매니저단이 확인 후 답변을 남깁니다.</p>
+              </div>
+              
+              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-3xl space-y-6">
+                <div className="space-y-4 max-h-[480px] overflow-y-auto pr-2">
+                  {messages.map((m) => (
+                    <div key={m.id} className="bg-slate-950/70 border border-slate-800/80 p-5 rounded-2xl space-y-3 shadow-inner">
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span className="font-semibold text-purple-400">{m.sender}</span>
+                        <span>{m.time}</span>
                       </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      value={inputChat} 
-                      onChange={(e) => setInputChat(e.target.value)} 
-                      placeholder="메시지 입력..." 
-                      className="flex-1 p-3 border rounded-xl text-sm"
-                    />
-                    <button 
-                      onClick={() => {
-                        if(!inputChat.trim()) return;
-                        setChatMessages([...chatMessages, { sender: currentUser.name, text: inputChat, time: '방금' }]);
-                        setInputChat('');
-                      }} 
-                      className="bg-slate-900 text-white px-5 rounded-xl font-semibold text-sm"
-                    >
-                      전송
-                    </button>
-                  </div>
-                </div>
-              )}
+                      <p className="text-sm text-slate-200 leading-relaxed">{m.text}</p>
 
-              {adminSubTab === 'users' && (
-                <div>
-                  <h3 className="font-bold text-lg mb-2">가입한 사용자 목록</h3>
-                  <p className="text-xs text-slate-500 mb-4">닉네임이나 프로필이 부적절한 경우 사유를 작성하여 주의를 줄 수 있습니다.</p>
-                  
-                  <div className="space-y-3">
-                    {usersList.map(u => (
-                      <div key={u.id} className="p-4 bg-slate-50 border rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="font-bold text-slate-900">{u.name}</p>
-                          <p className="text-xs text-slate-500">{u.email}</p>
+                      {/* 답변 목록 */}
+                      {m.replies && m.replies.length > 0 && (
+                        <div className="pl-4 border-l-2 border-purple-500/30 space-y-2 mt-3 pt-2">
+                          {m.replies.map((r) => (
+                            <div key={r.id} className="bg-purple-950/20 border border-purple-500/10 p-3 rounded-xl space-y-1">
+                              <div className="flex justify-between text-[11px] text-slate-400">
+                                <span className="font-bold text-pink-400">🛡️ {r.sender}</span>
+                                <span>{r.time}</span>
+                              </div>
+                              <p className="text-xs text-slate-300">{r.text}</p>
+                            </div>
+                          ))}
                         </div>
-                        <button 
-                          onClick={() => setWarningModalUser(u)}
-                          className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl text-xs font-bold hover:bg-amber-200"
-                        >
-                          ⚠️ 주의 주기
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                      )}
 
-                  {warningModalUser && (
-                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-                        <h4 className="font-bold text-lg mb-2">'{warningModalUser.name}'님에게 주의 부여</h4>
-                        <p className="text-xs text-slate-500 mb-3">부적절한 사유를 상세히 작성해 주세요 (최소 20자 이상 필수).</p>
-                        <textarea 
-                          rows={4}
-                          value={warningReason}
-                          onChange={(e) => setWarningReason(e.target.value)}
-                          placeholder="사유를 20자 이상 입력하세요..."
-                          className="w-full p-3 border rounded-xl text-sm mb-2"
-                        />
-                        <p className={`text-xs ${warningReason.length >= 20 ? 'text-emerald-600 font-bold' : 'text-rose-500'}`}>
-                          현재 글자 수: {warningReason.length}자 (최소 20자 필요)
-                        </p>
-                        <div className="flex justify-end gap-2 mt-4">
-                          <button onClick={() => { setWarningModalUser(null); setWarningReason(''); }} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold">취소</button>
+                      {/* 매니저 이상일 경우 답변 작성 입력창 */}
+                      {authLevel >= 3 && (
+                        <div className="flex space-x-2 pt-2">
+                          <input 
+                            type="text" 
+                            placeholder="매니저 공식 답변 작성..."
+                            value={replyInput[m.id] || ''}
+                            onChange={(e) => setReplyInput({...replyInput, [m.id]: e.target.value})}
+                            className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+                          />
                           <button 
-                            disabled={warningReason.length < 20}
                             onClick={() => {
-                              alert('사용자에게 주의 알림이 전송되었습니다.');
-                              setWarningModalUser(null);
-                              setWarningReason('');
+                              const text = replyInput[m.id];
+                              if (!text || !text.trim()) return;
+                              const updated = messages.map(msg => {
+                                if (msg.id === m.id) {
+                                  return {
+                                    ...msg,
+                                    replies: [...(msg.replies || []), { id: Date.now(), sender: authLevel === 4 ? '총괄관리자' : '매니저', text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }]
+                                  };
+                                }
+                                return msg;
+                              });
+                              setMessages(updated);
+                              setReplyInput({...replyInput, [m.id]: ''});
                             }}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold text-white ${warningReason.length >= 20 ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-300 cursor-not-allowed'}`}
+                            className="bg-pink-600 hover:bg-pink-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all"
                           >
-                            주의 발송
+                            답변 등록
                           </button>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              )}
 
-              {adminSubTab === 'admin_approval' && (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="font-bold text-lg mb-2">관리자 임명 링크 생성</h3>
-                    <p className="text-xs text-slate-500 mb-3">비밀번호(`lineupupup0614!`)와 함께 전달하여 관리자를 모집하세요.</p>
-                    <div className="flex gap-2">
-                      <input type="text" readOnly value="https://lineup-hub.vercel.app/admin-invite?code=0614" className="w-full p-3 bg-slate-50 border rounded-xl text-xs text-slate-600" />
-                      <button onClick={() => alert('임명 링크가 복사되었습니다!')} className="bg-slate-900 text-white px-4 rounded-xl text-xs font-bold whitespace-nowrap">복사</button>
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <h3 className="font-bold text-lg mb-2">현재 관리자 명단 및 총괄 관리자 위임</h3>
-                    <div className="space-y-3">
-                      {adminList.map(a => (
-                        <div key={a.email} className="p-4 bg-slate-50 border rounded-xl flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-slate-900 flex items-center gap-2">
-                              {a.name}
-                              {a.role === 'super_admin' && <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">👑 총괄 관리자</span>}
-                            </p>
-                            <p className="text-xs text-slate-500">{a.email}</p>
-                          </div>
-                          
-                          {isSuperAdmin && a.email !== currentUser.email && (
-                            <div className="flex gap-2">
-                              <button 
-                                onClick={() => setSuperTransferModal(a)}
-                                className="bg-amber-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-amber-600"
-                              >
-                                총괄 위임
-                              </button>
-                              <button 
-                                onClick={() => setAdminList(adminList.filter(item => item.email !== a.email))}
-                                className="bg-rose-100 text-rose-700 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-rose-200"
-                              >
-                                해제
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {superTransferModal && (
-                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
-                        <h4 className="font-bold text-lg text-slate-900 mb-2">👑 총괄 관리자 위임 절차</h4>
-                        {transferStep === 1 ? (
-                          <div>
-                            <p className="text-sm text-slate-600 mb-6">
-                              정말 <b>'{superTransferModal.name}'</b>님에게 총괄 관리자 권한을 위임하시겠습니까?<br/>
-                              위임 후 본인은 일반 관리자로 전환됩니다.
-                            </p>
-                            <div className="flex gap-2">
-                              <button onClick={() => setSuperTransferModal(null)} className="flex-1 bg-slate-100 py-3 rounded-xl font-bold text-sm">아니요</button>
-                              <button onClick={() => setTransferStep(2)} className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold text-sm">네, 진행합니다</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="text-sm text-slate-600 mb-3">보안을 위해 권한 부여 비밀번호를 입력해주세요.</p>
-                            <input 
-                              type="password" 
-                              value={transferPassword}
-                              onChange={(e) => setTransferPassword(e.target.value)}
-                              placeholder="lineupupup0614!" 
-                              className="w-full p-3 border rounded-xl text-sm mb-4"
-                            />
-                            <div className="flex gap-2">
-                              <button onClick={() => { setSuperTransferModal(null); setTransferStep(1); }} className="flex-1 bg-slate-100 py-3 rounded-xl font-bold text-sm">취소</button>
-                              <button onClick={() => handleTransferSuperAdmin(superTransferModal)} className="flex-1 bg-rose-600 text-white py-3 rounded-xl font-bold text-sm">최종 위임하기</button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                {/* 새 메시지 작성 입력창 */}
+                <div className="flex space-x-2 pt-2 border-t border-slate-800">
+                  <input 
+                    type="text" 
+                    placeholder="익명으로 문의나 의견을 남겨주세요..."
+                    value={newMsg}
+                    onChange={(e) => setNewMsg(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newMsg.trim()) {
+                        setMessages([...messages, { id: Date.now(), sender: '익명방문자', text: newMsg, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), replies: [] }]);
+                        setNewMsg('');
+                      }
+                    }}
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-purple-500 shadow-inner"
+                  />
+                  <button 
+                    onClick={() => {
+                      if (!newMsg.trim()) return;
+                      setMessages([...messages, { id: Date.now(), sender: '익명방문자', text: newMsg, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), replies: [] }]);
+                      setNewMsg('');
+                    }}
+                    className="bg-purple-600 hover:bg-purple-500 text-white px-6 rounded-2xl font-bold text-sm transition-all shadow-lg shadow-purple-600/30 flex items-center space-x-1.5"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>등록</span>
+                  </button>
                 </div>
-              )}
-
-              {['applications', 'inquiries', 'pledges', 'member_links', 'bulletin', 'delete_req', 'reports'].includes(adminSubTab) && (
-                <div className="text-center py-12 text-slate-400">
-                  <p className="text-lg font-bold mb-1">📋 {adminSubTab.toUpperCase()} 관리 모듈</p>
-                  <p className="text-xs">요청하신 세부 검수 및 필수 사유 검증 로직이 적용되어 있습니다.</p>
-                </div>
-              )}
-
-            </div>
-          </div>
-        )}
-
-        {/* 3. 설정 화면 */}
-        {currentTab === 'settings' && (
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-            <h2 className="text-xl font-black">⚙️ 앱 설정 및 환경</h2>
-            
-            <div className="space-y-4 text-sm">
-              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                <span>언어 선택 (Language)</span>
-                <select value={language} onChange={(e) => setLanguage(e.target.value)} className="p-2 border rounded-lg bg-white font-semibold">
-                  <option value="KR">한국어 (KR)</option>
-                  <option value="EN">English (EN)</option>
-                  <option value="JP">日本語 (JP)</option>
-                  <option value="CN">中文 (CN)</option>
-                  <option value="ES">Español (ES)</option>
-                </select>
-              </div>
-
-              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                <span>4자리 앱 PIN 보안 잠금</span>
-                <button onClick={() => setIsLocked(true)} className="px-4 py-2 bg-slate-900 text-white rounded-lg font-semibold text-xs">잠금 테스트</button>
-              </div>
-
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs">
-                <p className="font-bold mb-1">🛡️ 100% 완전 무료 서비스 안내</p>
-                <p>유료 결제나 제한 없이, 발급된 링크를 통해 평생 영구적으로 무료로 사용할 수 있습니다.</p>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-      </main>
+          {activeTab === 'admin' && authLevel >= 3 && (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex justify-between items-center flex-wrap gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">11모듈 관리자 대시보드</h2>
+                  <p className="text-xs text-slate-400 mt-1">시스템 전용 11가지 핵심 제어 모듈이 가동 중입니다. (총괄관리자 권한으로 클릭 시 상태 토글 가능)</p>
+                </div>
+                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-4 py-2 rounded-xl font-bold flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>ALL SYSTEMS NORMAL</span>
+                </span>
+              </div>
 
-      {/* --- 하단 네비게이션 탭 바 --- */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 px-6 py-3 flex justify-around items-center max-w-4xl mx-auto">
-        {[
-          { id: 'home', label: '홈', icon: '🏠' },
-          { id: 'pledge', label: '공약', icon: '📅' },
-          { id: 'archive', label: '아카이브', icon: '🖼️' },
-          { id: 'inquiry', label: '문의', icon: '💬' },
-          { id: 'settings', label: '설정', icon: '⚙️' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setCurrentTab(tab.id)}
-            className={`flex flex-col items-center transition ${currentTab === tab.id ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            <span className="text-lg">{tab.icon}</span>
-            <span className="text-[10px] mt-1">{tab.label}</span>
-          </button>
-        ))}
-      </nav>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {modules.map((mod) => (
+                  <div key={mod.id} className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl space-y-3 hover:border-purple-500/40 transition-all shadow-lg flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-pink-400 font-black tracking-wider">MODULE #{mod.id < 10 ? `0${mod.id}` : mod.id}</span>
+                        <button 
+                          onClick={() => toggleModuleStatus(mod.id)}
+                          className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border transition-all ${mod.status === 'Active' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30'}`}
+                          title="클릭하여 상태 변경 (총괄 권한 필요)"
+                        >
+                          {mod.status}
+                        </button>
+                      </div>
+                      <h3 className="font-bold text-white text-base">{mod.name}</h3>
+                      <p className="text-xs text-slate-400 leading-relaxed">{mod.desc}</p>
+                    </div>
+                    <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[11px] text-slate-500 font-medium">
+                      <span>타겟: {mod.target}</span>
+                      <span className="text-purple-400 font-bold">Stable</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
